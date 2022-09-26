@@ -469,7 +469,8 @@ std::string ConvPowerVR::GenerateConv(const GpuInfo& gpu_info,
 
   std::string c;
   if (use_simd_broadcast && gpu_info.IsApiOpenCl()) {
-    if (gpu_info.opencl_info.cl_version == OpenClVersion::kCl2_0) {
+    if (gpu_info.opencl_info.cl_version == OpenClVersion::kCl2_0 ||
+        gpu_info.SupportsExtension("cl_khr_subgroups")) {
       c += "#pragma OPENCL EXTENSION cl_khr_subgroups : enable\n";
     } else if (gpu_info.SupportsExtension("cl_intel_subgroups")) {
       c += "#pragma OPENCL EXTENSION cl_intel_subgroups : enable\n";
@@ -1305,13 +1306,14 @@ ConvPowerVR::ConvParams ConvPowerVR::GuessBestParams(
     conv_params.block_size = int4(1, 1, 1, 4);
     conv_params.src_depth_loop_size = 1;
     int sub_group_size = 16;
-    const bool supports_subgroups =
-        gpu_info.SupportsExtension("cl_khr_subgroups") ||
-        gpu_info.SupportsExtension("cl_intel_subgroups");
+    const bool supports_intel_subgroups =
+        gpu_info.SupportsExtension("cl_intel_subgroups") &&
+        ((gpu_info.SupportsExtension("cl_intel_required_subgroup_size") &&
+          gpu_info.SupportsSubGroupWithSize(sub_group_size)) ||
+         !gpu_info.SupportsExtension("cl_intel_required_subgroup_size"));
     if (definition.precision != CalculationsPrecision::F32_F16 &&
-        supports_subgroups &&
-        gpu_info.SupportsExtension("cl_intel_required_subgroup_size") &&
-        gpu_info.SupportsSubGroupWithSize(sub_group_size)) {
+        (gpu_info.SupportsExtension("cl_khr_subgroups") ||
+         supports_intel_subgroups)) {
       conv_params.weights_upload_type =
           WeightsUploadType::PRIVATE_MEM_SIMD_BROADCAST;
       conv_params.simd_size = sub_group_size;
