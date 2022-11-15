@@ -21,6 +21,7 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/lite/delegates/gpu/common/data_type.h"
+#include "absl/strings/match.h"
 
 namespace tflite {
 namespace gpu {
@@ -351,6 +352,8 @@ struct OpenClInfo {
   bool supports_rgba_f32_tex2d = false;
 
   bool IsImage2dFromBufferSupported() const;
+
+  bool IsCLVK() const { return absl::StrContains(platform_version, "clvk");}
 };
 
 enum class MetalLanguageVersion {
